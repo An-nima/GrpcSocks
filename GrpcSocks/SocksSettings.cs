@@ -12,6 +12,8 @@ namespace GrpcSocks
 
         public static string? ServerAddr { get; set; }
         public static int ServerPort { get; set; }
+
+        public static string? Guid { get; set; }
     }
     public class SerializeSocksSettings
     {
@@ -23,6 +25,8 @@ namespace GrpcSocks
 
         public string? ServerAddr { get; set; }
         public int ServerPort { get; set; }
+
+        public string? Guid { get; set; }
     }
     public static class SocksSettingsExtension
     {

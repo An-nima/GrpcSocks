@@ -1,8 +1,8 @@
 {
-  //Server/Clinet/Default(Server and Client)
-  "Mode": "Client",
+  "Mode": "",
   "LocalBindAddr": "127.0.0.1",
   "LocalPort": 10800,
   "ServerAddr": "localhost",
-  "ServerPort": 7223
+  "ServerPort": 7223,
+  "Guid": "d2e687fa-c6a8-4e64-a4bc-ec01f97e442f"
 }

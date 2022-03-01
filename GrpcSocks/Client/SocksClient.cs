@@ -1,7 +1,9 @@
 ﻿using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
+using GrpcSocks.Interceptors;
 using GrpcSocks.Protos;
 using GrpcSocks.SocksCore;
 using System.Net;
@@ -15,12 +17,13 @@ namespace GrpcSocks.Client
     {
         public TcpListener? MainTcpListener { get; set; }
         public GrpcChannel? MainGrpcChannel { get; set; }
-
+        public CallInvoker? MainCallInvoker { get; set; }
         public async Task StartAsync()
         {
             var localIP = IPAddress.Parse(SocksSettings.LocalBindAddr!);
             MainTcpListener = new TcpListener(localIP, SocksSettings.LocalPort);
             MainTcpListener.Start();
+            Console.WriteLine($"info: Local listen on {localIP}:{SocksSettings.LocalPort}");
             MainGrpcChannel = GrpcChannel.ForAddress($"https://{SocksSettings.ServerAddr!}:{SocksSettings.ServerPort!}", new GrpcChannelOptions
             {
                 HttpHandler = new SocketsHttpHandler
@@ -28,8 +31,8 @@ namespace GrpcSocks.Client
                     EnableMultipleHttp2Connections = true
                 },
                 MaxSendMessageSize = int.MaxValue
-
             });
+            MainCallInvoker = MainGrpcChannel.Intercept(new ClientInterceptor());
             while (true)
             {
                 var client = await MainTcpListener.AcceptTcpClientAsync();
@@ -39,7 +42,7 @@ namespace GrpcSocks.Client
         public async Task GrpcStartAsync(TcpClient client)
         {
             var stream = client.GetStream();
-            var socksStreamClient = new SocksStreamClient(MainGrpcChannel);
+            var socksStreamClient = new SocksStreamClient(MainCallInvoker);
             var upStreamID = await HandShakeAsync(stream, socksStreamClient);
             if (upStreamID == null) return;
             await GrpcUploadAsync(stream, socksStreamClient, upStreamID);
