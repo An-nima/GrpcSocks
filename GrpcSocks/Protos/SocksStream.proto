@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option csharp_namespace = "GrpcSocks.Protos";
+
+import "google/protobuf/wrappers.proto";
+
+
+service SocksStream{
+	rpc Auth(google.protobuf.BytesValue) returns (HandShakeResponse);
+	rpc Confirm(google.protobuf.BytesValue) returns (HandShakeResponse);
+	rpc Upload(stream google.protobuf.BytesValue) returns (stream google.protobuf.BytesValue);
+}
+
+message HandShakeResponse{
+	google.protobuf.BoolValue Success = 1;
+	google.protobuf.BytesValue ResponseBytes = 2;
+	google.protobuf.BytesValue UpStreamID = 3;
+}
