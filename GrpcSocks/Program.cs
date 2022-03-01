@@ -2,9 +2,10 @@ using GrpcSocks;
 using GrpcSocks.Client;
 using GrpcSocks.Interceptors;
 using GrpcSocks.Services;
-
+using System.Net;
 
 await SocksSettingsExtension.SetStatic();
+System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls13;
 switch (SocksSettings.Mode)
 {
     case "Server":
@@ -28,7 +29,7 @@ void RunServer()
         options.ListenAnyIP(443, listenOptions =>
         {
             listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http3;
-            listenOptions.UseHttps();
+            listenOptions.UseHttps($"{SocksSettings.DomainName}.pfx");
         });
     });
     // Additional configuration is required to successfully run gRPC on macOS.

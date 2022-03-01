@@ -13,7 +13,7 @@ namespace GrpcSocks
 
         public static string? LocalServerBindAddr { get; set; }
         public static int LocalServerBindPort { get; set; }
-
+        public static string? DomainName { get; set; }
 
         public static string? Guid { get; set; }
     }
@@ -28,7 +28,7 @@ namespace GrpcSocks
 
         public string? LocalServerBindAddr { get; set; }
         public int LocalServerBindPort { get; set; }
-
+        public string? DomainName { get; set; }
 
         public string? Guid { get; set; }
     }
