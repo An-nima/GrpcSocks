@@ -6,12 +6,14 @@ namespace GrpcSocks
     {
         public static string? Mode { get; set; }
 
-        public static string? LocalBindAddr { get; set; }
-        public static int LocalPort { get; set; }
-
-
+        public static string? LocalClientBindAddr { get; set; }
+        public static int LocalClientBindPort { get; set; }
         public static string? ServerAddr { get; set; }
         public static int ServerPort { get; set; }
+
+        public static string? LocalServerBindAddr { get; set; }
+        public static int LocalServerBindPort { get; set; }
+
 
         public static string? Guid { get; set; }
     }
@@ -19,12 +21,14 @@ namespace GrpcSocks
     {
         public string? Mode { get; set; }
 
-        public string? LocalBindAddr { get; set; }
-        public int LocalPort { get; set; }
-
-
+        public string? LocalClientBindAddr { get; set; }
+        public int LocalClientBindPort { get; set; }
         public string? ServerAddr { get; set; }
         public int ServerPort { get; set; }
+
+        public string? LocalServerBindAddr { get; set; }
+        public int LocalServerBindPort { get; set; }
+
 
         public string? Guid { get; set; }
     }

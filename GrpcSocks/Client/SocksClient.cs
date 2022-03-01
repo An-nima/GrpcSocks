@@ -20,17 +20,22 @@ namespace GrpcSocks.Client
         public CallInvoker? MainCallInvoker { get; set; }
         public async Task StartAsync()
         {
-            var localIP = IPAddress.Parse(SocksSettings.LocalBindAddr!);
-            MainTcpListener = new TcpListener(localIP, SocksSettings.LocalPort);
+            var localIP = IPAddress.Parse(SocksSettings.LocalClientBindAddr!);
+            MainTcpListener = new TcpListener(localIP, SocksSettings.LocalClientBindPort);
             MainTcpListener.Start();
-            Console.WriteLine($"info: Local listen on {localIP}:{SocksSettings.LocalPort}");
+            Console.WriteLine($"info: Local listen on {localIP}:{SocksSettings.LocalClientBindPort}");
             MainGrpcChannel = GrpcChannel.ForAddress($"https://{SocksSettings.ServerAddr!}:{SocksSettings.ServerPort!}", new GrpcChannelOptions
             {
                 HttpHandler = new SocketsHttpHandler
                 {
                     EnableMultipleHttp2Connections = true
                 },
-                MaxSendMessageSize = int.MaxValue
+                MaxSendMessageSize = int.MaxValue,
+                HttpClient = new HttpClient
+                {
+                    DefaultRequestVersion = HttpVersion.Version30,
+                    DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact
+                }
             });
             MainCallInvoker = MainGrpcChannel.Intercept(new ClientInterceptor());
             while (true)
