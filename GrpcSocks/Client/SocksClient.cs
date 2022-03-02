@@ -26,12 +26,15 @@ namespace GrpcSocks.Client
             Console.WriteLine($"info: Local listen on {localIP}:{SocksSettings.LocalClientBindPort}");
             MainGrpcChannel = GrpcChannel.ForAddress($"https://{SocksSettings.ServerAddr!}:{SocksSettings.ServerPort!}", new GrpcChannelOptions
             {
-                MaxSendMessageSize = int.MaxValue,
-                HttpClient = new HttpClient
+                HttpClient = new HttpClient(new HttpClientHandler
+                {
+                    SslProtocols = System.Security.Authentication.SslProtocols.Tls13 | System.Security.Authentication.SslProtocols.Tls12
+                })
                 {
                     DefaultRequestVersion = HttpVersion.Version30,
-                    DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact
-                }
+                    DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower
+                },
+                MaxSendMessageSize = int.MaxValue
             });
             MainCallInvoker = MainGrpcChannel.Intercept(new ClientInterceptor());
             while (true)
@@ -50,25 +53,18 @@ namespace GrpcSocks.Client
         }
         public async Task<ByteString?> HandShakeAsync(NetworkStream stream, SocksStreamClient socksStreamClient)
         {
-            try
-            {
-                var authBytes = new byte[1024];
-                var authByteCount = await stream.ReadAsync(authBytes, 0, authBytes.Length);
-                var authCall = await socksStreamClient.AuthAsync(new BytesValue { Value = UnsafeByteOperations.UnsafeWrap(new ReadOnlyMemory<byte>(authBytes, 0, authByteCount)) });
-                if (!authCall.Success!.Value) return null;
-                stream.Write(authCall.ResponseBytes.ToByteArray());
+            var authBytes = new byte[1024];
+            var authByteCount = await stream.ReadAsync(authBytes, 0, authBytes.Length);
+            var authCall = await socksStreamClient.AuthAsync(new BytesValue { Value = UnsafeByteOperations.UnsafeWrap(new ReadOnlyMemory<byte>(authBytes, 0, authByteCount)) });
+            if (!authCall.Success!.Value) return null;
+            stream.Write(authCall.ResponseBytes.ToByteArray());
 
-                var confirmBytes = new byte[1024];
-                var confirmBytesCount = await stream.ReadAsync(confirmBytes, 0, authBytes.Length);
-                var confirmCall = await socksStreamClient.ConfirmAsync(new BytesValue { Value = UnsafeByteOperations.UnsafeWrap(new ReadOnlyMemory<byte>(confirmBytes, 0, confirmBytesCount)) });
-                if (!confirmCall.Success!.Value) return null;
-                stream.Write(confirmCall.ResponseBytes.ToByteArray());
-                return confirmCall.UpStreamID;
-            }
-            catch (Exception ex)
-            {
-                throw;
-            }
+            var confirmBytes = new byte[1024];
+            var confirmBytesCount = await stream.ReadAsync(confirmBytes, 0, authBytes.Length);
+            var confirmCall = await socksStreamClient.ConfirmAsync(new BytesValue { Value = UnsafeByteOperations.UnsafeWrap(new ReadOnlyMemory<byte>(confirmBytes, 0, confirmBytesCount)) });
+            if (!confirmCall.Success!.Value) return null;
+            stream.Write(confirmCall.ResponseBytes.ToByteArray());
+            return confirmCall.UpStreamID;
         }
 
         public async Task GrpcUploadAsync(NetworkStream stream, SocksStreamClient socksStreamClient, ByteString upStreamID)
