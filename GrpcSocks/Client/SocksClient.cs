@@ -3,6 +3,7 @@ using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Grpc.Net.Client;
+using GrpcSocks.Extension;
 using GrpcSocks.Interceptors;
 using GrpcSocks.Protos;
 using GrpcSocks.SocksCore;
@@ -23,7 +24,7 @@ namespace GrpcSocks.Client
             var localIP = IPAddress.Parse(SocksSettings.LocalClientBindAddr!);
             MainTcpListener = new TcpListener(localIP, SocksSettings.LocalClientBindPort);
             MainTcpListener.Start();
-            Console.WriteLine($"info: Local listen on {localIP}:{SocksSettings.LocalClientBindPort}");
+            Logger.WriteLine($"info: Local listen on {localIP}:{SocksSettings.LocalClientBindPort}");
             MainGrpcChannel = GrpcChannel.ForAddress($"https://{SocksSettings.ServerAddr!}:{SocksSettings.ServerPort!}", new GrpcChannelOptions
             {
                 HttpClient = new HttpClient(new HttpClientHandler

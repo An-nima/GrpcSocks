@@ -1,5 +1,6 @@
 ﻿using Grpc.Core;
 using Grpc.Core.Interceptors;
+using GrpcSocks.Extension;
 using System.Numerics;
 using System.Security.Cryptography;
 
@@ -9,7 +10,7 @@ namespace GrpcSocks.Interceptors
 	{
         public override Task DuplexStreamingServerHandler<TRequest, TResponse>(IAsyncStreamReader<TRequest> requestStream, IServerStreamWriter<TResponse> responseStream, ServerCallContext context, DuplexStreamingServerMethod<TRequest, TResponse> continuation)
         {
-            Console.WriteLine(context.GetHttpContext().Request.Protocol);
+            Logger.WriteLine(context.GetHttpContext().Request.Protocol);
             var time = Convert.ToInt64(context.RequestHeaders.Get("time")?.Value);
             if (DateTime.UtcNow - DateTime.FromBinary(time) > TimeSpan.FromSeconds(10)) throw new Exception("NoAuth");
             var salt = new BigInteger(Guid.Parse(SocksSettings.Guid!).ToByteArray());
@@ -19,7 +20,7 @@ namespace GrpcSocks.Interceptors
         }
         public override Task<TResponse> UnaryServerHandler<TRequest, TResponse>(TRequest request, ServerCallContext context, UnaryServerMethod<TRequest, TResponse> continuation)
         {
-            Console.WriteLine(context.GetHttpContext().Request.Protocol);
+            Logger.WriteLine(context.GetHttpContext().Request.Protocol);
             var time = Convert.ToInt64(context.RequestHeaders.Get("time")?.Value);
             if (DateTime.UtcNow - DateTime.FromBinary(time) > TimeSpan.FromSeconds(10)) throw new Exception("NoAuth");
             var salt = new BigInteger(Guid.Parse(SocksSettings.Guid!).ToByteArray());

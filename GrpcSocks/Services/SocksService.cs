@@ -1,6 +1,7 @@
 ﻿using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using GrpcSocks.Extension;
 using GrpcSocks.Protos;
 using GrpcSocks.SocksCore;
 using System.Collections.Concurrent;
@@ -20,7 +21,7 @@ namespace GrpcSocks.Services
         {
             if (new MemoryStream(request.Value.ToArray()).Auth() == null)
             {
-                Console.WriteLine("fail");
+                Logger.WriteLine("fail");
                 return new HandShakeResponse
                 {
                     Success = false
@@ -39,7 +40,7 @@ namespace GrpcSocks.Services
             var requestHeader = confirmStream.ReceiveAuth();
             if (requestHeader == null)
             {
-                Console.WriteLine("fail");
+                Logger.WriteLine("fail");
                 return new HandShakeResponse
                 {
                     Success = false
@@ -51,7 +52,7 @@ namespace GrpcSocks.Services
             await client.ConnectAsync(requestHeader.AddressString!, requestHeader.PortInt32);
             var upStream = client.GetStream();
             var upStreamID = MainRandom.NextInt64();
-            Console.WriteLine($"{client.Client.LocalEndPoint} -> {requestHeader.AddressString}:{requestHeader.PortInt32} -- {upStreamID}");
+            Logger.WriteLine($"{client.Client.LocalEndPoint} -> {requestHeader.AddressString}:{requestHeader.PortInt32} -- {upStreamID}");
             var upStreamIDBytes = BitConverter.GetBytes(upStreamID);
             MainNetworkStreams.TryAdd(upStreamID, upStream);
             _ = Task.Run(async () => { await Task.Delay(3000); MainNetworkStreams.TryRemove(upStreamID, out NetworkStream? _); });
@@ -59,7 +60,7 @@ namespace GrpcSocks.Services
             {
                 Success = true,
                 ResponseBytes = ByteString.CopyFrom(ProxySteps.AcceptRequest(requestHeader)),
-                UpStreamID =  ByteString.CopyFrom(upStreamIDBytes)
+                UpStreamID = ByteString.CopyFrom(upStreamIDBytes)
             };
         }
 
@@ -93,13 +94,30 @@ namespace GrpcSocks.Services
         }
         public async Task ForwardResponse()
         {
-			var bytes = new byte[1024*8];
-			int byteCount;
-			while ((byteCount = await ServerStream!.ReadAsync(bytes, 0, bytes.Length)) > 0)
-			{
-				await ResponseStream!.WriteAsync(new BytesValue { Value = UnsafeByteOperations.UnsafeWrap(new ReadOnlyMemory<byte>(bytes, 0, byteCount)) });
-			}
+            var channelIn = System.Threading.Channels.Channel.CreateUnbounded<(byte[], int)>();
+            var channelOut = System.Threading.Channels.Channel.CreateUnbounded<(byte[], int)>();
+            await channelIn.Writer.WriteAsync((new byte[1024 * 8], 0));
+            await channelIn.Writer.WriteAsync((new byte[1024 * 8], 0));
+            await channelIn.Writer.WriteAsync((new byte[1024 * 8], 0));
+            await channelIn.Writer.WriteAsync((new byte[1024 * 8], 0));
+            _ = Task.Run(async () =>
+            {
+                var tupleIn = await channelIn.Reader.ReadAsync();
+                int bytesCount;
+                while ((bytesCount = await ServerStream!.ReadAsync(tupleIn.Item1, 0, tupleIn.Item1.Length)) > 0)
+                {
+                    await channelOut.Writer.WriteAsync((tupleIn.Item1, bytesCount));
+                    tupleIn = await channelIn.Reader.ReadAsync();
+                }
+                await channelOut.Writer.WriteAsync((tupleIn.Item1, -1));
+            });
+            (byte[], int) tupleOut;
+            while ((tupleOut = await channelOut.Reader.ReadAsync()).Item2 != -1)
+            {
+                await ResponseStream!.WriteAsync(new BytesValue { Value = UnsafeByteOperations.UnsafeWrap(new ReadOnlyMemory<byte>(tupleOut.Item1, 0, tupleOut.Item2)) });
+                await channelIn.Writer.WriteAsync(tupleOut);
+            }
             GC.Collect();
-		}
+        }
     }
 }
